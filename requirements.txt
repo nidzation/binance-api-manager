@@ -1,4 +1,3 @@
-requests 
-websocket-client 
-python-binance 
-python-dotenv 
+# Core dependencies
+binance
+python-dotenv
