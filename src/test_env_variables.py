@@ -4,10 +4,10 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv("config/.env")
 
-# Get API keys
+# Retrieve API keys
 API_KEY = os.getenv("BINANCE_API_KEY")
 SECRET_KEY = os.getenv("BINANCE_SECRET_KEY")
 
-# Print keys
+# Output the keys
 print(f"Loaded API Key: {API_KEY}")
 print(f"Loaded Secret Key: {SECRET_KEY}")

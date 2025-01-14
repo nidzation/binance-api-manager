@@ -5,11 +5,11 @@ from binance.client import Client
 # Load environment variables
 load_dotenv("config/.env")
 
-# Get API keys
+# Retrieve API keys
 API_KEY = os.getenv("BINANCE_API_KEY")
 SECRET_KEY = os.getenv("BINANCE_SECRET_KEY")
 
-# Validate keys
+# Validate API keys
 if not API_KEY or not SECRET_KEY:
     raise Exception("API key and/or Secret key are missing.")
 
