@@ -1,62 +1,51 @@
 import logging
 from binance_client import get_binance_client
 
-# Configure logging
+# Constants
+TEST_USDT_AMOUNT = 10.0  # Amount for test trades
+
+# Setup logging
 logging.basicConfig(
-    filename='logs/trading_strategy.log',
+    filename="logs/trading_strategy.log",
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-def execute_strategy():
-    """
-    Execute the trading strategy using 10% of the USDT balance for fee-free pairs.
-    """
-    client = get_binance_client()
-    if not client:
-        logging.error("Failed to connect to Binance.")
-        return
-
+def execute_trading_strategy():
     try:
-        # Fetch fee-free trading pairs
-        fee_free_pairs = get_fee_free_pairs(client)
-        if not fee_free_pairs:
-            logging.warning("No fee-free trading pairs available.")
-            return
+        client = get_binance_client()
 
-        # Fetch account balances
+        # Check USDT balance
         account_info = client.get_account()
         usdt_balance = next(
-            (asset for asset in account_info["balances"] if asset["asset"] == "USDT"),
-            {"free": "0"}
+            (balance for balance in account_info["balances"] if balance["asset"] == "USDT"), None
         )
-        available_usdt = float(usdt_balance["free"])
-        budget = available_usdt * 0.10
+        available_usdt = float(usdt_balance["free"]) if usdt_balance else 0.0
 
-        if budget <= 0:
-            logging.warning("Insufficient USDT balance to execute the strategy.")
+        logging.info(f"Available USDT: {available_usdt}")
+        if available_usdt < TEST_USDT_AMOUNT:
+            logging.warning("Insufficient USDT for test trade.")
             return
 
-        logging.info(f"Using 10% of USDT balance (${budget:.2f}) for trading.")
-        # Add trading logic here...
-        logging.info("Trading strategy executed successfully.")
-    except Exception as e:
-        logging.error(f"An error occurred while executing the strategy: {e}")
+        # Fetch BTC price
+        ticker = client.get_symbol_ticker(symbol="BTCUSDT")
+        btc_price = float(ticker["price"])
+        logging.info(f"Current BTC/USDT Price: {btc_price}")
 
-def get_fee_free_pairs(client):
-    """
-    Fetch and return a list of fee-free trading pairs.
-    """
-    try:
-        exchange_info = client.get_exchange_info()
-        fee_free_pairs = [
-            symbol["symbol"] for symbol in exchange_info["symbols"]
-            if symbol.get("isSpotTradingAllowed", False) and symbol.get("makerCommission", 1) == 0
-        ]
-        return fee_free_pairs
+        # Calculate BTC quantity
+        btc_quantity = round(TEST_USDT_AMOUNT / btc_price, 6)
+        logging.info(f"Calculated BTC Quantity for Test Trade: {btc_quantity}")
+
+        # Place test order
+        test_order = client.create_test_order(
+            symbol="BTCUSDT",
+            side="BUY",
+            type="MARKET",
+            quantity=btc_quantity,
+        )
+        logging.info(f"Test Order Successful: {test_order}")
     except Exception as e:
-        logging.error(f"Error fetching fee-free pairs: {e}")
-        return []
+        logging.error(f"Error executing trading strategy: {e}")
 
 if __name__ == "__main__":
-    execute_strategy()
+    execute_trading_strategy()

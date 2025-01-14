@@ -1,35 +1,26 @@
 import logging
 from binance_client import get_binance_client
 
-# Configure logging
+# Setup logging
 logging.basicConfig(
-    filename='logs/account_summary.log',
+    filename="logs/account_summary.log",
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
 def fetch_account_summary():
-    """
-    Fetch and display the user's complete account asset allocation.
-    """
-    client = get_binance_client()
-    if not client:
-        logging.error("Failed to connect to Binance. Please check your API credentials.")
-        return
-
     try:
-        logging.info("Fetching complete account assets...")
+        client = get_binance_client()
         account_info = client.get_account()
-        balances = account_info.get("balances", [])
+        logging.info("Fetching complete account assets...")
 
-        # Filter and log assets with non-zero balances
-        assets = [asset for asset in balances if float(asset["free"]) > 0 or float(asset["locked"]) > 0]
-        for asset in assets:
-            logging.info(f"{asset['asset']}: Free = {asset['free']}, Locked = {asset['locked']}")
-        print("Account summary logged successfully.")
+        for balance in account_info['balances']:
+            asset = balance['asset']
+            free = balance['free']
+            locked = balance['locked']
+            logging.info(f"{asset}: Free = {free}, Locked = {locked}")
     except Exception as e:
-        logging.error(f"An error occurred while fetching account assets: {e}")
-        print("Failed to fetch account summary. Check logs for details.")
+        logging.error(f"Error fetching account summary: {e}")
 
 if __name__ == "__main__":
     fetch_account_summary()

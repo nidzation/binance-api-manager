@@ -1,19 +1,22 @@
-from binance.client import Client
-import os
-from dotenv import load_dotenv
+import logging
+from binance_client import get_binance_client
 
-load_dotenv('config/.env')
+# Setup logging
+logging.basicConfig(
+    filename="logs/test_binance_connection.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
-api_key = os.getenv('BINANCE_API_KEY')
-api_secret = os.getenv('BINANCE_SECRET_KEY')
-
-if not api_key or not api_secret:
-    print("API key and/or secret key are missing.")
-else:
+def test_binance_connection():
     try:
-        client = Client(api_key, api_secret)
-        account_info = client.get_account()
-        print("Connection successful! Account data retrieved:")
-        print(account_info)
+        client = get_binance_client()
+        status = client.get_system_status()
+        logging.info(f"Binance API Status: {status['msg']} (Code: {status['status']})")
+        print(f"Binance API Status: {status['msg']} (Code: {status['status']})")
     except Exception as e:
-        print(f"Error connecting to Binance: {e}")
+        logging.error(f"Error connecting to Binance API: {e}")
+        print(f"Error connecting to Binance API: {e}")
+
+if __name__ == "__main__":
+    test_binance_connection()
