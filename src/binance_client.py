@@ -1,29 +1,24 @@
-import os
 from binance.client import Client
 from dotenv import load_dotenv
+import os
 
-# Load environment variables from .env file
-load_dotenv(dotenv_path="config/.env")
+load_dotenv()
 
-# Retrieve API credentials from the environment
-API_KEY = os.getenv("BINANCE_API_KEY")
-SECRET_KEY = os.getenv("BINANCE_SECRET_KEY")
-
-# Initialize the Binance client
 def get_binance_client():
+    """
+    Initialize and return the Binance API client.
+    """
+    api_key = os.getenv("BINANCE_API_KEY")
+    secret_key = os.getenv("BINANCE_SECRET_KEY")
+
+    if not api_key or not secret_key:
+        print("API key and/or Secret key are missing.")
+        return None
+
     try:
-        client = Client(API_KEY, SECRET_KEY)
-        # Test the connection to Binance API
-        client.ping()
+        client = Client(api_key, secret_key)
         print("Binance client successfully initialized.")
         return client
     except Exception as e:
-        print(f"Error initializing Binance client: {e}")
+        print(f"Failed to initialize Binance client: {e}")
         return None
-
-if __name__ == "__main__":
-    client = get_binance_client()
-    if client:
-        # Example: Print account status
-        account = client.get_account()
-        print("Account information:", account)

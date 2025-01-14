@@ -1,36 +1,35 @@
+import logging
 from binance_client import get_binance_client
+
+# Configure logging
+logging.basicConfig(
+    filename='logs/account_summary.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 def fetch_account_summary():
     """
-    Fetch and display the user's account asset allocation.
+    Fetch and display the user's complete account asset allocation.
     """
     client = get_binance_client()
     if not client:
-        print("Failed to connect to Binance. Please check your API credentials.")
+        logging.error("Failed to connect to Binance. Please check your API credentials.")
         return
 
     try:
-        print("Fetching account summary...")
+        logging.info("Fetching complete account assets...")
         account_info = client.get_account()
         balances = account_info.get("balances", [])
-        
-        # Filter for assets with non-zero balances
-        assets = [asset for asset in balances if float(asset["free"]) > 0 or float(asset["locked"]) > 0]
 
-        if assets:
-            print("\nYour Account Summary:")
-            print("-" * 30)
-            for asset in assets:
-                free = float(asset["free"])
-                locked = float(asset["locked"])
-                print(f"{asset['asset']}:")
-                print(f"  Free: {free}")
-                print(f"  Locked: {locked}")
-            print("-" * 30)
-        else:
-            print("No assets found in your account.")
+        # Filter and log assets with non-zero balances
+        assets = [asset for asset in balances if float(asset["free"]) > 0 or float(asset["locked"]) > 0]
+        for asset in assets:
+            logging.info(f"{asset['asset']}: Free = {asset['free']}, Locked = {asset['locked']}")
+        print("Account summary logged successfully.")
     except Exception as e:
-        print(f"An error occurred while fetching the account summary: {e}")
+        logging.error(f"An error occurred while fetching account assets: {e}")
+        print("Failed to fetch account summary. Check logs for details.")
 
 if __name__ == "__main__":
     fetch_account_summary()
