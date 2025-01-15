@@ -1,9 +1,8 @@
-from binance_client import get_binance_client
+from binance_client import generate_ed25519_signature
 
-# Test connection to Binance API
+# Test connection
 try:
-    client = get_binance_client()
-    status = client.get_system_status()
-    print(f"Binance API Status: {status['msg']} (Code: {status['status']})")
+    headers = generate_ed25519_signature("GET", "/api/v3/time")
+    print("Generated headers:", headers)
 except Exception as e:
-    print(f"Failed to connect to Binance API: {e}")
+    print(f"Error: {e}")
