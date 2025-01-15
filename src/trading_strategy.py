@@ -1,6 +1,6 @@
 import os
 import logging
-from decimal import Decimal, ROUND_DOWN
+from decimal import Decimal
 from dotenv import load_dotenv
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
@@ -27,26 +27,45 @@ if not API_KEY or not SECRET_KEY:
 client = Client(API_KEY, SECRET_KEY)
 
 # Constants
-TEST_USDT_AMOUNT = 10  # Use 10 USDT for testing
-SYMBOL = "BTCUSDT"
-REAL_TRADE = True  # Set to True to enable real trades
+USDT_PER_COIN = Decimal("1.0")  # Amount of USDT to trade per coin
+REAL_TRADE = False  # Toggle real trades on/off
 
+def get_top_10_coins():
+    """Fetch the top 10 coins by 24-hour trading volume."""
+    tickers = client.get_ticker()
+    sorted_tickers = sorted(tickers, key=lambda x: float(x['quoteVolume']), reverse=True)
+    return [ticker['symbol'] for ticker in sorted_tickers if ticker['symbol'].endswith('USDT')][:10]
 
-def get_minimum_order_info(symbol):
-    """Fetch minimum quantity and step size for the given symbol."""
+def get_minimum_trade_amount(symbol):
+    """Get the minimum trade amount (notional) for a given symbol."""
     exchange_info = client.get_exchange_info()
     for s in exchange_info['symbols']:
         if s['symbol'] == symbol:
             for f in s['filters']:
-                if f['filterType'] == 'LOT_SIZE':
-                    return Decimal(f['minQty']), Decimal(f['stepSize'])
-    raise ValueError(f"Symbol {symbol} not found or missing LOT_SIZE filter.")
+                if f['filterType'] == 'MIN_NOTIONAL':
+                    return Decimal(f['minNotional'])
+    raise ValueError(f"Symbol {symbol} does not have a MIN_NOTIONAL filter.")
 
-
-def adjust_quantity(quantity, step_size):
-    """Adjust quantity to match step size."""
-    return (quantity // step_size) * step_size
-
+def place_market_order(symbol, usdt_amount):
+    """Place a market order using a specific USDT amount."""
+    try:
+        if REAL_TRADE:
+            order = client.create_order(
+                symbol=symbol,
+                side="BUY",
+                type="MARKET",
+                quoteOrderQty=float(usdt_amount),
+            )
+            logging.info(f"Market order placed for {symbol}: {order}")
+            return order
+        else:
+            logging.info(f"Simulated order: Buy {usdt_amount} USDT worth of {symbol}")
+            print(f"Simulated order: Buy {usdt_amount} USDT worth of {symbol}")
+            return None
+    except BinanceAPIException as e:
+        logging.error(f"Order failed for {symbol}: {e}")
+        print(f"Order failed for {symbol}: {e}")
+        return None
 
 def main():
     try:
@@ -59,50 +78,33 @@ def main():
         print(f"Available USDT balance: {usdt_balance}")
         logging.info(f"Available USDT balance: {usdt_balance}")
 
-        if usdt_balance < Decimal(TEST_USDT_AMOUNT):
-            logging.warning("Insufficient USDT balance for the trade.")
-            print("Insufficient USDT balance for the trade.")
+        if usdt_balance < USDT_PER_COIN * 10:
+            logging.warning("Insufficient USDT for trading.")
+            print("Insufficient USDT for trading.")
             return
 
-        # Get current BTC price
-        ticker = client.get_symbol_ticker(symbol=SYMBOL)
-        btc_price = Decimal(ticker['price'])
-        print(f"Current BTC price: {btc_price}")
-        logging.info(f"Current BTC price: {btc_price}")
+        # Fetch top 10 coins by trading volume
+        top_10_coins = get_top_10_coins()
+        print(f"Top 10 coins: {top_10_coins}")
+        logging.info(f"Top 10 coins: {top_10_coins}")
 
-        # Calculate BTC quantity
-        min_qty, step_size = get_minimum_order_info(SYMBOL)
-        btc_quantity = Decimal(TEST_USDT_AMOUNT) / btc_price
-        btc_quantity = adjust_quantity(btc_quantity, step_size)
+        for symbol in top_10_coins:
+            try:
+                # Get minimum trade amount for the symbol
+                min_trade_amount = get_minimum_trade_amount(symbol)
+                usdt_to_trade = max(USDT_PER_COIN, min_trade_amount)
 
-        print(f"Minimum BTC quantity: {min_qty}, Step size: {step_size}")
-        print(f"Adjusted BTC quantity: {btc_quantity}")
-        logging.info(f"Adjusted BTC quantity: {btc_quantity}")
+                if usdt_to_trade > usdt_balance:
+                    logging.warning(f"Not enough USDT for {symbol}. Needed: {usdt_to_trade}")
+                    print(f"Not enough USDT for {symbol}. Needed: {usdt_to_trade}")
+                    continue
 
-        if btc_quantity < min_qty:
-            logging.error(f"BTC quantity {btc_quantity} is below minimum order size {min_qty}.")
-            print(f"BTC quantity {btc_quantity} is below minimum order size {min_qty}.")
-            return
+                # Execute the trade
+                place_market_order(symbol, usdt_to_trade)
 
-        # Place order
-        if REAL_TRADE:
-            order = client.create_order(
-                symbol=SYMBOL,
-                side="BUY",
-                type="MARKET",
-                quantity=float(btc_quantity),
-            )
-            print(f"Live order result: {order}")
-            logging.info(f"Live order result: {order}")
-        else:
-            order = client.create_test_order(
-                symbol=SYMBOL,
-                side="BUY",
-                type="MARKET",
-                quantity=float(btc_quantity),
-            )
-            print(f"Test order result: {order}")
-            logging.info(f"Test order result: {order}")
+            except Exception as e:
+                logging.error(f"Unexpected error for {symbol}: {e}")
+                print(f"Unexpected error for {symbol}: {e}")
 
     except BinanceAPIException as e:
         logging.error(f"API error: {e}")
@@ -110,7 +112,6 @@ def main():
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
         print(f"Unexpected error: {e}")
-
 
 if __name__ == "__main__":
     main()
